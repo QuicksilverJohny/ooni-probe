@@ -1,0 +1,36 @@
+- options:
+    collector: null
+    help: 0
+    logfile: null
+    no-default-reporter: 0
+    parallelism: '10'
+    pcapfile: null
+    reportfile: null
+    resume: 0
+    subargs: []
+    test_file: manipulation/http_header_field_manipulation
+    testdeck: null
+- options:
+    collector: null
+    help: 0
+    logfile: null
+    no-default-reporter: 0
+    parallelism: '10'
+    pcapfile: null
+    reportfile: null
+    resume: 0
+    subargs: []
+    test_file: manipulation/http_invalid_request_line
+    testdeck: null
+- options:
+    collector: null
+    help: 0
+    logfile: null
+    no-default-reporter: 0
+    parallelism: '10'
+    pcapfile: null
+    reportfile: null
+    resume: 0
+    subargs: []
+    test_file: manipulation/captiveportal
+    testdeck: null
