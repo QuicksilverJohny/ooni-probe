@@ -286,3 +286,34 @@ class ScapySniffer(ScapyProtocol):
     def packetReceived(self, packet):
         self.pcapwriter.write(packet)
 
+class ScapyTraceroute(ScapyProtocol):
+    dst_ports = [0, 22, 23, 53, 80, 123, 443, 8080, 65535]
+    ttl_min = 1
+    ttl_max = 30
+
+    def __init__(self):
+        self.sent_packets = []
+        self.received_packets = []
+
+    def ICMPTraceRoute(self, host):
+        self.sendPackets(IP(dst=host,ttl=(ttl_min,ttl_max), id=RandShort())/ICMP())
+    def UDPTraceRoute(self, host):
+        for dst_port in self.dst_ports:
+            self.sendPackets(IP(dst=host,ttl=(ttl_min,ttl_max), id=RandShort())/UDP(dport=dst_port, sport=random.randint(1024, 65535)))
+    def TCPTraceRoute(self, host):
+            for dst_port in self.dst_ports:
+                self.sendPackets(IP(dst=host,ttl=(ttl_min,ttl_max), id=RandShort())/TCP(flags=2L, dport=dst_port,sport=random.randint(1024,65535)))
+
+    def sendPackets(self, packets):
+        if random.randint(0,1):
+            random.shuffle(packets)
+        for packet in packets:
+            self.sent_packets.append(packet)
+            self.factory.super_socket.send(packet)
+
+    def packetReceived(self, packet):
+        # can we match it to a previously sent packet?
+        # is type icmp ttl expired
+        # has a src_port in dst_ports
+        # has an ip id field that matches
+        self.received_packets.append(packet)
