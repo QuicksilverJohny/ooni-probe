@@ -3,6 +3,7 @@ import socket
 import os
 import sys
 import time
+import random
 
 from twisted.internet import protocol, base, fdesc
 from twisted.internet import reactor, threads, error
@@ -11,6 +12,7 @@ from zope.interface import implements
 
 from scapy.config import conf
 from scapy.supersocket import L3RawSocket
+from scapy.all import IP, TCP, ICMP, IPerror, UDP, RandShort
 
 from ooni.utils import log
 from ooni.settings import config
@@ -135,10 +137,10 @@ class ScapyFactory(abstract.FileDescriptor):
         abstract.FileDescriptor.__init__(self, reactor)
         if interface == 'auto':
             interface = getDefaultIface()
-        if not super_socket and sys.platform == 'darwin':
+        if not super_socket:# and sys.platform == 'darwin':
             super_socket = conf.L3socket(iface=interface, promisc=True, filter='')
-        elif not super_socket:
-            super_socket = L3RawSocket(iface=interface, promisc=True)
+        #elif not super_socket:
+        #    super_socket = L3RawSocket(iface=interface, promisc=True)
 
         self.protocols = []
         fdesc._setCloseOnExec(super_socket.ins.fileno())
@@ -291,37 +293,40 @@ class ScapyTraceroute(ScapyProtocol):
     ttl_max = 30
 
     def __init__(self):
-        self.sent_packets = {}
+        self.sent_packets = []
         self.received_packets = []
         self.hosts = []
 
     def ICMPTraceroute(self, host):
         if host not in self.hosts: self.hosts.append(host)
-        self.sendPackets(IP(dst=host,ttl=(ttl_min,ttl_max), id=RandShort())/ICMP())
+        self.sendPackets(IP(dst=host,ttl=(self.ttl_min,self.ttl_max), id=RandShort())/ICMP())
 
     def UDPTraceroute(self, host):
         if host not in self.hosts: self.hosts.append(host)
         for dst_port in self.dst_ports:
-            self.sendPackets(IP(dst=host,ttl=(ttl_min,ttl_max), id=RandShort())/UDP(dport=dst_port, sport=random.randint(1024, 65535)))
+            self.sendPackets(IP(dst=host,ttl=(self.ttl_min,self.ttl_max), id=RandShort())/UDP(dport=dst_port, sport=random.randint(1024, 65535)))
 
     def TCPTraceroute(self, host):
         if host not in self.hosts: self.hosts.append(host)
         for dst_port in self.dst_ports:
-            self.sendPackets(IP(dst=host,ttl=(ttl_min,ttl_max), id=RandShort())/TCP(flags=2L, dport=dst_port,sport=random.randint(1024,65535)))
+            self.sendPackets(IP(dst=host,ttl=(self.ttl_min,self.ttl_max), id=RandShort())/TCP(flags=2L, dport=dst_port, sport=random.randint(1024,65535)))
 
     def sendPackets(self, packets):
-        if random.randint(0,1):
-            random.shuffle(packets)
+        #if random.randint(0,1):
+        #    random.shuffle(packets)
         for packet in packets:
             self.sent_packets.append(packet)
             self.factory.super_socket.send(packet)
 
     def packetReceived(self, packet):
-        if isinstance(packet.getlayer(2), IPerror):
-            self.received_packets.append(packet)
+        try:
+            if isinstance(packet.getlayer(2), IPerror):
+                self.received_packets.append(packet)
+        except Exception, e:
+            import pdb;pdb.set_trace()
 
-        elif packet.src in self.hosts:
-            self.answered_packets.append(packet)
+        if getattr(packet, 'src', None) in self.hosts:
+            self.received_packets.append(packet)
 
     def stopListening(self):
         self.factory.unRegisterProtocol(self)
